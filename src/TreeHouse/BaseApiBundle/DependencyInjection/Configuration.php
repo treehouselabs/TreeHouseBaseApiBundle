@@ -22,6 +22,11 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('host')
                     ->isRequired()
                 ->end()
+                ->scalarNode('allowed_origins')
+                    ->info('CORS: specifies which origins are allowed to access the api.')
+                    ->example('http://example.org')
+                    ->defaultValue('*')
+                ->end()
             ->end()
         ;
 

@@ -87,7 +87,7 @@ abstract class BaseApiController extends Controller
     {
         $response = new JsonResponse();
         $response->setStatusCode($statusCode);
-        $response->headers->set('Access-Control-Allow-Origin', '*');
+        $response->headers->set('Access-Control-Allow-Origin', $this->container->getParameter('tree_house.api.allowed_origins'));
 
         return $response;
     }
@@ -190,7 +190,7 @@ abstract class BaseApiController extends Controller
      */
     protected function getSecurityContext()
     {
-        return $this->get('tree_house.api.security.context');
+        return $this->get('tree_house.api.security.security_context');
     }
 
     /**

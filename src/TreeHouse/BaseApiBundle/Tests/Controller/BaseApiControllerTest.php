@@ -7,18 +7,23 @@ use TreeHouse\BaseApiBundle\Security\SecurityContext;
 use TreeHouse\BaseApiBundle\Tests\Mock\ApiControllerMock;
 use JMS\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
+use TreeHouse\BaseApiBundle\DependencyInjection\TreeHouseBaseApiExtension;
+
 class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 {
     public function testGetNoApiUser()
     {
-        $container = $this->getContainerMock(['tree_house.api.security.context' => $this->getSecurityContextMock()]);
+        $container = $this->getContainer();
 
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
@@ -29,7 +34,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
     public function testGetApiUser()
     {
         $securityContext = $this->getSecurityContextMock();
-        $container = $this->getContainerMock(['tree_house.api.security.context' => $securityContext]);
+        $container = $this->getContainer(['tree_house.api.security.security_context' => $securityContext]);
 
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
@@ -59,7 +64,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 
     public function testGetRequestData()
     {
-        $container = $this->getContainerMock();
+        $container = $this->getContainer();
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
@@ -89,7 +94,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
     public function testGetSerializedRequestData()
     {
         $serializer = $this->getSerializerMock();
-        $container = $this->getContainerMock(['jms_serializer' => $serializer]);
+        $container = $this->getContainer(['jms_serializer' => $serializer]);
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
@@ -120,7 +125,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue(new ConstraintViolationList([])))
         ;
 
-        $container = $this->getContainerMock(['validator' => $validator]);
+        $container = $this->getContainer(['validator' => $validator]);
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
         $controller->validate($request);
@@ -151,7 +156,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue(new ConstraintViolationList([$violation])))
         ;
 
-        $container = $this->getContainerMock(['validator' => $validator]);
+        $container = $this->getContainer(['validator' => $validator]);
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
@@ -160,7 +165,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 
     public function testCreateResponse()
     {
-        $container = $this->getContainerMock();
+        $container = $this->getContainer();
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
@@ -177,7 +182,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
     public function testRenderResponse()
     {
         $templating = $this->getTemplatingMock();
-        $container = $this->getContainerMock(['templating' => $templating]);
+        $container = $this->getContainer(['templating' => $templating]);
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
@@ -207,7 +212,6 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         ;
 
         $data = ['foo' => 'bar'];
-        $ok   = true;
         $code = Response::HTTP_OK;
         $meta = ['metafoo' => 'metabar'];
 
@@ -219,7 +223,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller
             ->expects($this->once())
             ->method('renderResponse')
-            ->with($result, $ok, $code)
+            ->with($result, true, $code)
         ;
 
         $controller->renderOk($data, $code, [], $meta);
@@ -234,7 +238,6 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
             ->getMockForAbstractClass()
         ;
 
-        $ok    = false;
         $code  = Response::HTTP_FORBIDDEN;
         $error = 'oh noes!';
 
@@ -245,35 +248,49 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller
             ->expects($this->once())
             ->method('renderResponse')
-            ->with($result, $ok, $code)
+            ->with($result, false, $code)
         ;
 
         $controller->renderError($code, $error);
     }
 
-    /**
-     * @param array $gets
-     *
-     * @return ContainerInterface|\PHPUnit_Framework_MockObject_MockObject
-     */
-    protected function getContainerMock(array $gets = [])
+    public function testCorsHeader()
     {
-        $container = $this
-            ->getMockBuilder('Symfony\Component\DependencyInjection\ContainerInterface')
-            ->disableOriginalConstructor()
-            ->getMockForAbstractClass()
-        ;
+        $container = $this->getContainer();
+        $controller = new ApiControllerMock();
+        $controller->setContainer($container);
 
-        $num = 0;
+        // create default response
+        $response = $controller->createResponse();
+
+        $this->assertTrue($response->headers->has('Access-Control-Allow-Origin'));
+        $this->assertEquals('acme.org', $response->headers->get('Access-Control-Allow-Origin'));
+    }
+
+    /**
+     * @param array  $gets
+     * @param string $file
+     * @param array  $parameters
+     * @param bool   $debug
+     *
+     * @return ContainerBuilder
+     */
+    protected function getContainer(array $gets = [], $file = 'complete.yml', $parameters = [], $debug = false)
+    {
+        $container = new ContainerBuilder(new ParameterBag(array_merge($parameters, ['kernel.debug' => $debug])));
+        $container->registerExtension(new TreeHouseBaseApiExtension());
+
+        $locator = new FileLocator(__DIR__.'/../Fixtures');
+        $loader = new YamlFileLoader($container, $locator);
+        $loader->load($file);
+
         foreach ($gets as $id => $service) {
-            $num++;
-            $container
-                ->expects($this->exactly($num))
-                ->method('get')
-                ->with($id)
-                ->will($this->returnValue($service))
-            ;
+            $container->set($id, $service);
         }
+
+        $container->getCompilerPassConfig()->setOptimizationPasses([]);
+        $container->getCompilerPassConfig()->setRemovingPasses([]);
+        $container->compile();
 
         return $container;
     }

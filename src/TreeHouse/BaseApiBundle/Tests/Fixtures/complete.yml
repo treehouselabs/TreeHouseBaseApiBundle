@@ -1,0 +1,4 @@
+tree_house_base_api:
+  host: api.example.org
+  token_host: tokens.example.org
+  allowed_origins: acme.org
