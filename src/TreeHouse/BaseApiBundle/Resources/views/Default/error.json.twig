@@ -1,0 +1,5 @@
+{% spaceless %}
+  {% autoescape false %}
+    {{ data|json_encode(app.debug ? constant('JSON_PRETTY_PRINT') : null) }}
+  {% endautoescape %}
+{% endspaceless %}

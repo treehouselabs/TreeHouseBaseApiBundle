@@ -1,0 +1,11 @@
+parameters:
+  tree_house.api.security.user_encoder.class: TreeHouse\BaseApiBundle\Security\UserEncoder
+  tree_house.api.security.security_context.class: TreeHouse\BaseApiBundle\Security\SecurityContext
+
+services:
+  tree_house.api.security.user_encoder:
+    class: %tree_house.api.security.user_encoder.class%
+    arguments: [%secret%]
+
+  tree_house.api.security.security_context:
+    class: %tree_house.api.security.security_context.class%

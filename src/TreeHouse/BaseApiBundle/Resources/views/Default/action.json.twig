@@ -1,0 +1,5 @@
+{% spaceless %}
+{% autoescape false %}
+  {{ data|serialize('json', context) }}
+{% endautoescape %}
+{% endspaceless %}

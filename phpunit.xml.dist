@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phpunit
+  backupGlobals               = "false"
+  backupStaticAttributes      = "false"
+  colors                      = "true"
+  convertErrorsToExceptions   = "true"
+  convertNoticesToExceptions  = "true"
+  convertWarningsToExceptions = "true"
+  processIsolation            = "false"
+  stopOnFailure               = "false"
+  syntaxCheck                 = "false"
+  bootstrap                   = "tests/bootstrap.php">
+
+  <testsuites>
+    <testsuite name="Test suite">
+      <directory>./src/TreeHouse/BaseApiBundle/Tests</directory>
+    </testsuite>
+  </testsuites>
+
+  <filter>
+    <whitelist>
+      <directory suffix=".php">./src</directory>
+      <exclude>
+        <directory>./src/TreeHouse/BaseApiBundle/Behat</directory>
+        <directory>./src/TreeHouse/BaseApiBundle/Tests</directory>
+      </exclude>
+    </whitelist>
+  </filter>
+</phpunit>
