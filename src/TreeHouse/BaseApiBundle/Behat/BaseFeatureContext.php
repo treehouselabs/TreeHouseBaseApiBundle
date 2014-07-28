@@ -1,6 +1,6 @@
 <?php
 
-namespace TreeHouse\BaseApiBundle\Features\Context;
+namespace TreeHouse\BaseApiBundle\Behat;
 
 use Behat\Behat\Context\SnippetAcceptingContext;
 use Behat\Symfony2Extension\Context\KernelAwareContext;
