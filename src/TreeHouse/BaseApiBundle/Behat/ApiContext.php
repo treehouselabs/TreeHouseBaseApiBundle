@@ -3,6 +3,7 @@
 namespace TreeHouse\BaseApiBundle\Behat;
 
 use Behat\Gherkin\Node\PyStringNode;
+use Behat\Gherkin\Node\TableNode;
 use PHPUnit_Framework_Assert as Assert;
 
 class ApiContext extends BaseFeatureContext
@@ -23,6 +24,14 @@ class ApiContext extends BaseFeatureContext
     public function iGetTo($path)
     {
         $this->request('GET', $path);
+    }
+
+    /**
+     * @When I request the api with :method :path
+     */
+    public function iRequestTheApi($method, $path)
+    {
+        $this->request($method, $path);
     }
 
     /**
@@ -266,6 +275,68 @@ class ApiContext extends BaseFeatureContext
     }
 
     /**
+     * @Then the api/API result key :key should equal:
+     */
+    public function theResultKeyShouldEqualNode($key, $node)
+    {
+        $json = $this->getJsonData($node);
+
+        $result = $this->getApiResult();
+        Assert::assertArrayHasKey($key, $result);
+        Assert::assertEquals($json, $result[$key]);
+    }
+
+    /**
+     * @Then the api/API result should contain a key with:
+     */
+    public function theResultShouldContainNode($node)
+    {
+        $json = $this->getJsonData($node);
+
+        $result = $this->getApiResult();
+        foreach ($result as $value) {
+            if ($value == $json) {
+                return true;
+            }
+        }
+
+        Assert::fail(sprintf('No result was found containing: %s', json_encode($json, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)));
+    }
+
+    /**
+     * @param $data
+     *
+     * @throws \InvalidArgumentException
+     *
+     * @return array
+     */
+    protected function getJsonData($data)
+    {
+        if (!is_object($data)) {
+            throw new \InvalidArgumentException('Invalid json data');
+        }
+
+        $json = null;
+
+        if ($data instanceof PyStringNode) {
+            $json = json_decode($data->getRaw(), true);
+        }
+
+        if ($data instanceof TableNode) {
+            $json = $data->getRowsHash();
+        }
+
+        if (null === $json) {
+            throw new \InvalidArgumentException(sprintf(
+                'Invalid json data class ("%s")',
+                get_class($data)
+            ));
+        }
+
+        return $json;
+    }
+
+    /**
      * @inheritdoc
      */
     protected function request($method, $uri, $data = null, array $headers = [], array $server = [])
@@ -282,8 +353,7 @@ class ApiContext extends BaseFeatureContext
             $headers['X-User-Token'] = static::$userToken;
         }
 
-        // TODO version should be configurable
-        return parent::request($method, '/v1/' . ltrim($uri, '/'), $data, $headers, $server);
+        return parent::request($method, $uri, $data, $headers, $server);
     }
 
     /**
