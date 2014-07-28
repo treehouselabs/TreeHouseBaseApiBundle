@@ -1,6 +1,6 @@
 <?php
 
-namespace TreeHouse\BaseApiBundle\Features\Context;
+namespace TreeHouse\BaseApiBundle\Behat;
 
 use Behat\Gherkin\Node\TableNode;
 use Doctrine\Common\Inflector\Inflector;

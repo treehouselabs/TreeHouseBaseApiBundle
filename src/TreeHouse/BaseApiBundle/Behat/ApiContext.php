@@ -1,6 +1,6 @@
 <?php
 
-namespace TreeHouse\BaseApiBundle\Features\Context;
+namespace TreeHouse\BaseApiBundle\Behat;
 
 use Behat\Gherkin\Node\PyStringNode;
 use PHPUnit_Framework_Assert as Assert;
