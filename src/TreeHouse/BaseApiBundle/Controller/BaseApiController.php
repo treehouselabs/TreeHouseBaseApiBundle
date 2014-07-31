@@ -2,31 +2,145 @@
 
 namespace TreeHouse\BaseApiBundle\Controller;
 
-use TreeHouse\BaseApiBundle\Security\SecurityContext;
-use TreeHouse\BaseApiBundle\Exception\ValidationException;
 use JMS\Serializer\SerializationContext;
 use JMS\Serializer\SerializerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Validator\ValidatorInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+use TreeHouse\BaseApiBundle\Security\SecurityContext;
+use TreeHouse\BaseApiBundle\Exception\ValidationException;
 
 abstract class BaseApiController extends Controller
 {
     /**
-     * @return UserInterface
+     * @param integer $statusCode
+     *
+     * @return JsonResponse
      */
-    public function getApiUser()
+    protected function createResponse($statusCode = Response::HTTP_OK)
     {
-        if ($token = $this->getSecurityContext()->getToken()) {
-            return $token->getUser();
+        $response = new JsonResponse();
+        $response->setStatusCode($statusCode);
+        $response->headers->set('Access-Control-Allow-Origin', $this->container->getParameter('tree_house.api.allowed_origins'));
+
+        return $response;
+    }
+
+    /**
+     * Renders an successful Api call.
+     *
+     * @see renderResponse()
+     *
+     * @param Request $request
+     * @param mixed   $result   The result of the call.
+     * @param integer $code     The response code.
+     * @param array   $groups   JMS\Serializer groups
+     * @param array   $metadata Extra metadata to put in the response
+     *
+     * @return JsonResponse
+     */
+    protected function renderOk(Request $request, $result, $code = 200, array $groups = [], array $metadata = [])
+    {
+        $data = array();
+
+        if (!empty($metadata)) {
+            $data['metadata'] = $metadata;
         }
 
-        return null;
+        if (null !== $result) {
+            $data['result'] = $result;
+        }
+
+        return $this->renderResponse($request, $data, true, $code, $groups);
+    }
+
+    /**
+     * Renders an Api error.
+     *
+     * @see renderResponse()
+     *
+     * @param Request      $request
+     * @param integer      $code    The response code
+     * @param string|array $error   The error
+     * @param array        $groups  JMS\Serializer groups
+     *
+     * @return JsonResponse
+     */
+    protected function renderError(Request $request, $code = 400, $error, array $groups = [])
+    {
+        return $this->renderResponse($request, ['error' => $error], false, $code, $groups);
+    }
+
+    /**
+     * Renders a JSON response in a generic structure:
+     *
+     * <code>
+     * {
+     *    "ok": true,
+     *    "result": {
+     *      [...]
+     *    }
+     * }
+     * </code>
+     *
+     * Or in case of an error:
+     *
+     * <code>
+     * {
+     *    "ok": false,
+     *    "error": "message"
+     * }
+     * </code>
+     *
+     * @param Request $request
+     * @param array   $result     The result of the call.
+     * @param boolean $ok         Whether the call was successful or not.
+     * @param integer $statusCode The response code.
+     * @param array   $groups     JMS\Serializer groups
+     *
+     * @return JsonResponse
+     */
+    protected function renderResponse(Request $request, array $result = [], $ok, $statusCode, array $groups = [])
+    {
+        $response = $this->createResponse($statusCode);
+
+        $data = array_merge(
+            ['ok' => $ok],
+            $result
+        );
+
+        $context = SerializationContext::create();
+        $context->setSerializeNull(true);
+
+        if ($groups) {
+            $context->setGroups($groups);
+        }
+
+        // the json response needs to have data set as an array, rather than setting the content directly.
+        // this is because other options use that to overwrite the content (like jsonp).
+        // so unfortunately we have to double-convert the data, since the serializer won't convert to
+        // arrays just yet :(
+        $json = $this->getSerializer()->serialize($data, 'json', $context);
+        $response->setData(json_decode($json, true));
+
+        // handle JSON-P requests
+        $callback = $request->query->get('callback', '');
+        if (!empty($callback)) {
+            try {
+                $response->setCallback($callback);
+            } catch (\InvalidArgumentException $e) {
+                // remove the callback from the query parameters, and render an error
+                $request->query->remove('callback');
+
+                return $this->renderError($request, Response::HTTP_BAD_REQUEST, $e->getMessage(), $groups);
+            }
+        }
+
+        return $response;
     }
 
     /**
@@ -35,7 +149,7 @@ abstract class BaseApiController extends Controller
      *
      * @return ParameterBag|object
      */
-    public function getRequestData(Request $request, $serializeType = null)
+    protected function getRequestData(Request $request, $serializeType = null)
     {
         $data = null;
 
@@ -69,7 +183,7 @@ abstract class BaseApiController extends Controller
      *
      * @throws ValidationException
      */
-    public function validate($request)
+    protected function validate($request)
     {
         $violations = $this->getValidator()->validate($request);
 
@@ -79,110 +193,15 @@ abstract class BaseApiController extends Controller
     }
 
     /**
-     * @param integer $statusCode
-     *
-     * @return Response
+     * @return UserInterface
      */
-    public function createResponse($statusCode = Response::HTTP_OK)
+    protected function getApiUser()
     {
-        $response = new JsonResponse();
-        $response->setStatusCode($statusCode);
-        $response->headers->set('Access-Control-Allow-Origin', $this->container->getParameter('tree_house.api.allowed_origins'));
-
-        return $response;
-    }
-
-    /**
-     * Renders an successful Api call.
-     *
-     * @see renderResponse()
-     *
-     * @param mixed   $result   The result of the call.
-     * @param integer $code     The response code.
-     * @param array   $groups   JMS\Serializer groups
-     * @param array   $metadata Extra metadata to put in the response
-     *
-     * @return Response
-     */
-    public function renderOk($result, $code = 200, array $groups = [], array $metadata = [])
-    {
-        $data = array();
-
-        if (!empty($metadata)) {
-            $data['metadata'] = $metadata;
+        if ($token = $this->getSecurityContext()->getToken()) {
+            return $token->getUser();
         }
 
-        if (null !== $result) {
-            $data['result'] = $result;
-        }
-
-        return $this->renderResponse($data, true, $code, $groups);
-    }
-
-    /**
-     * Renders an Api error.
-     *
-     * @see renderResponse()
-     *
-     * @param integer      $code   The response code
-     * @param string|array $error  The error
-     * @param array        $groups JMS\Serializer groups
-     *
-     * @return Response
-     */
-    public function renderError($code = 400, $error, array $groups = [])
-    {
-        return $this->renderResponse(['error' => $error], false, $code, $groups);
-    }
-
-    /**
-     * Renders a JSON response in a generic structure:
-     *
-     * <code>
-     * {
-     *    "ok": true,
-     *    "result": {
-     *      [...]
-     *    }
-     * }
-     * </code>
-     *
-     * Or in case of an error:
-     *
-     * <code>
-     * {
-     *    "ok": false,
-     *    "error": "message"
-     * }
-     * </code>
-     *
-     * @param  array   $result     The result of the call.
-     * @param  boolean $ok         Whether the call was successful or not.
-     * @param  integer $statusCode The response code.
-     * @param  array   $groups     JMS\Serializer groups
-     * @return string
-     */
-    public function renderResponse(array $result = [], $ok, $statusCode, array $groups = [])
-    {
-        $response = $this->createResponse($statusCode);
-
-        $data = array_merge(
-            ['ok' => $ok],
-            $result
-        );
-
-        $context = SerializationContext::create();
-        $context->setSerializeNull(true);
-
-        if ($groups) {
-            $context->setGroups($groups);
-        }
-
-        return $this->getTemplating()->renderResponse(
-            'TreeHouseBaseApiBundle:Default:action.json.twig',
-            ['data' => $data, 'context' => $context],
-            $response
-        );
+        return null;
     }
 
     /**
@@ -199,14 +218,6 @@ abstract class BaseApiController extends Controller
     protected function getSerializer()
     {
         return $this->get('jms_serializer');
-    }
-
-    /**
-     * @return EngineInterface
-     */
-    protected function getTemplating()
-    {
-        return $this->get('templating');
     }
 
     /**
