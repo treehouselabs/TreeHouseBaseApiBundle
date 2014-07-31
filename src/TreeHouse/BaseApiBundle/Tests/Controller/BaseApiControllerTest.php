@@ -2,22 +2,19 @@
 
 namespace TreeHouse\BaseApiBundle\Tests\Controller;
 
-use TreeHouse\BaseApiBundle\Controller\BaseApiController;
-use TreeHouse\BaseApiBundle\Security\SecurityContext;
-use TreeHouse\BaseApiBundle\Tests\Mock\ApiControllerMock;
 use JMS\Serializer\SerializerInterface;
-use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
+use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-
-use Symfony\Component\Config\FileLocator;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use TreeHouse\BaseApiBundle\DependencyInjection\TreeHouseBaseApiExtension;
+use TreeHouse\BaseApiBundle\Security\SecurityContext;
+use TreeHouse\BaseApiBundle\Tests\Mock\ApiControllerMock;
 
 class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 {
@@ -28,7 +25,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
-        $this->assertNull($controller->getApiUser());
+        $this->assertNull($controller->doGetApiUser());
     }
 
     public function testGetApiUser()
@@ -59,7 +56,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
             ->will($this->returnValue($token))
         ;
 
-        $this->assertSame($user, $controller->getApiUser());
+        $this->assertSame($user, $controller->dogetApiUser());
     }
 
     public function testGetRequestData()
@@ -70,24 +67,24 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 
         $query = ['foo' => 'bar'];
         $request = Request::create('/foo', 'GET', $query);
-        $data = $controller->getRequestData($request);
+        $data = $controller->doGetRequestData($request);
         $this->assertEquals($query, $data->all(), '->getRequestData for GET request');
 
         $request = Request::create('/foo', 'POST', [], [], [], [], 'foo');
-        $data = $controller->getRequestData($request);
+        $data = $controller->doGetRequestData($request);
         $this->assertEquals('foo', $data, '->getRequestData for POST request');
 
         $request = Request::create('/foo', 'PUT', [], [], [], [], 'foo');
-        $data = $controller->getRequestData($request);
+        $data = $controller->doGetRequestData($request);
         $this->assertEquals('foo', $data, '->getRequestData for POST request');
 
         $request = Request::create('/foo', 'DELETE', [], [], [], [], 'foo');
-        $data = $controller->getRequestData($request);
+        $data = $controller->doGetRequestData($request);
         $this->assertEquals('foo', $data, '->getRequestData for POST request');
 
         $query = ['foo' => 'bar'];
         $request = Request::create('/foo', 'UNDEF', $query);
-        $data = $controller->getRequestData($request);
+        $data = $controller->doGetRequestData($request);
         $this->assertEquals($query, $data->all(), '->getRequestData for undefined request');
     }
 
@@ -105,12 +102,13 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         ;
 
         $request = Request::create('/foo', 'GET', ['foo' => 'bar']);
-        $data = $controller->getRequestData($request, 'test');
+        $data = $controller->doGetRequestData($request, 'test');
         $this->assertEquals('deserialized!', $data, '->getRequestData for GET request, serialized');
     }
 
     public function testValidate()
     {
+        /** @var \PHPUnit_Framework_MockObject_MockObject|Request $request */
         $request = $this
             ->getMockBuilder('Symfony\Component\HttpFoundation\Request')
             ->disableOriginalConstructor()
@@ -128,7 +126,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $container = $this->getContainer(['validator' => $validator]);
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
-        $controller->validate($request);
+        $controller->doValidate($request);
     }
 
     /**
@@ -136,6 +134,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
      */
     public function testValidateWithError()
     {
+        /** @var \PHPUnit_Framework_MockObject_MockObject|Request $request */
         $request = $this
             ->getMockBuilder('Symfony\Component\HttpFoundation\Request')
             ->disableOriginalConstructor()
@@ -160,7 +159,7 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
-        $controller->validate($request);
+        $controller->doValidate($request);
     }
 
     public function testCreateResponse()
@@ -170,30 +169,34 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller->setContainer($container);
 
         // create default response
-        $response = $controller->createResponse();
+        $response = $controller->doCreateResponse();
         $this->assertInstanceOf('Symfony\Component\HttpFoundation\JsonResponse', $response);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
 
         // create response with different code
-        $response = $controller->createResponse(Response::HTTP_I_AM_A_TEAPOT);
+        $response = $controller->doCreateResponse(Response::HTTP_I_AM_A_TEAPOT);
         $this->assertEquals(Response::HTTP_I_AM_A_TEAPOT, $response->getStatusCode());
     }
 
     public function testRenderResponse()
     {
-        $templating = $this->getTemplatingMock();
-        $container = $this->getContainer(['templating' => $templating]);
+        $serializer = $this->getSerializerMock();
+        $container  = $this->getContainer(['jms_serializer' => $serializer]);
         $controller = new ApiControllerMock();
         $controller->setContainer($container);
 
-        $templating
+        $serializer
             ->expects($this->once())
-            ->method('renderResponse')
-            ->will($this->returnArgument(1))
+            ->method('serialize')
+            ->will($this->returnCallback(function ($data) {
+                return json_encode($data);
+            }))
         ;
 
-        $response = $controller->renderResponse(['foo' => 'bar'], true, Response::HTTP_OK);
-        $data = $response['data'];
+        $request = Request::create('/foo');
+
+        $response = $controller->doRenderResponse($request, ['foo' => 'bar'], true, Response::HTTP_OK);
+        $data = json_decode($response->getContent(), true);
 
         $this->assertInternalType('array', $data);
         $this->assertArrayHasKey('ok', $data);
@@ -204,12 +207,14 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 
     public function testRenderOk()
     {
-        /** @var BaseApiController|\PHPUnit_Framework_MockObject_MockObject $controller */
+        /** @var ApiControllerMock|\PHPUnit_Framework_MockObject_MockObject $controller */
         $controller = $this
-            ->getMockBuilder('TreeHouse\BaseApiBundle\Controller\BaseApiController')
+            ->getMockBuilder('TreeHouse\BaseApiBundle\Tests\Mock\ApiControllerMock')
             ->setMethods(['renderResponse'])
             ->getMockForAbstractClass()
         ;
+
+        $request = Request::create('/foo');
 
         $data = ['foo' => 'bar'];
         $code = Response::HTTP_OK;
@@ -217,26 +222,28 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
 
         $result = [
             'metadata' => $meta,
-            'result' => $data
+            'result'   => $data
         ];
 
         $controller
             ->expects($this->once())
             ->method('renderResponse')
-            ->with($result, true, $code)
+            ->with($request, $result, true, $code)
         ;
 
-        $controller->renderOk($data, $code, [], $meta);
+        $controller->doRenderOk($request, $data, $code, [], $meta);
     }
 
     public function testRenderError()
     {
-        /** @var BaseApiController|\PHPUnit_Framework_MockObject_MockObject $controller */
+        /** @var ApiControllerMock|\PHPUnit_Framework_MockObject_MockObject $controller */
         $controller = $this
-            ->getMockBuilder('TreeHouse\BaseApiBundle\Controller\BaseApiController')
+            ->getMockBuilder('TreeHouse\BaseApiBundle\Tests\Mock\ApiControllerMock')
             ->setMethods(['renderResponse'])
             ->getMockForAbstractClass()
         ;
+
+        $request = Request::create('/foo');
 
         $code  = Response::HTTP_FORBIDDEN;
         $error = 'oh noes!';
@@ -248,10 +255,10 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller
             ->expects($this->once())
             ->method('renderResponse')
-            ->with($result, false, $code)
+            ->with($request, $result, false, $code)
         ;
 
-        $controller->renderError($code, $error);
+        $controller->doRenderError($request, $code, $error);
     }
 
     public function testCorsHeader()
@@ -261,10 +268,48 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
         $controller->setContainer($container);
 
         // create default response
-        $response = $controller->createResponse();
+        $response = $controller->doCreateResponse();
 
         $this->assertTrue($response->headers->has('Access-Control-Allow-Origin'));
         $this->assertEquals('acme.org', $response->headers->get('Access-Control-Allow-Origin'));
+    }
+
+    public function testJsonp()
+    {
+        $serializer = $this->getSerializerMock();
+        $container  = $this->getContainer(['jms_serializer' => $serializer]);
+        $controller = new ApiControllerMock();
+        $controller->setContainer($container);
+
+        $serializer
+            ->expects($this->once())
+            ->method('serialize')
+            ->will($this->returnCallback(function ($data) {
+                return json_encode($data);
+            }))
+        ;
+
+        $request = Request::create('/foo', 'GET', ['callback' => 'foo']);
+        $response = $controller->doRenderResponse($request, ['foo' => 'bar'], true, Response::HTTP_OK);
+
+        $this->assertEquals(
+            '/**/foo({"ok":true,"foo":"bar"});',
+            $response->getContent()
+        );
+    }
+
+    public function testJsonpInvalidCallback()
+    {
+        $controller = new ApiControllerMock();
+        $controller->setContainer($this->getContainer(['jms_serializer' => $this->getSerializerMock()]));
+
+        $request = Request::create('/foo', 'GET', ['callback' => '(function xss(x) {evil()})']);
+        $response = $controller->doRenderResponse($request, ['foo' => 'bar'], true, Response::HTTP_OK);
+
+        $this->assertEquals(
+            Response::HTTP_BAD_REQUEST,
+            $response->getStatusCode()
+        );
     }
 
     /**
@@ -313,17 +358,6 @@ class BaseApiControllerTest extends \PHPUnit_Framework_TestCase
     {
         return $this
             ->getMockBuilder('JMS\Serializer\SerializerInterface')
-            ->getMock()
-        ;
-    }
-
-    /**
-     * @return EngineInterface|\PHPUnit_Framework_MockObject_MockObject
-     */
-    protected function getTemplatingMock()
-    {
-        return $this
-            ->getMockBuilder('Symfony\Bundle\FrameworkBundle\Templating\EngineInterface')
             ->getMock()
         ;
     }

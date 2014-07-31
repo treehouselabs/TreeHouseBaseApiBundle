@@ -133,12 +133,36 @@ class ApiContext extends BaseFeatureContext
         Assert::assertThat(
             static::$response->headers->get('Content-Type'),
             Assert::logicalOr(
-                Assert::equalTo('application/json'),
-                Assert::equalTo('text/javascript')
+                Assert::stringStartsWith('application/json'),
+                Assert::stringStartsWith('text/javascript')
             )
         );
 
         Assert::assertJson($this->getResponseContent());
+    }
+
+    /**
+     * @Then the response should contain the following json/JSON:
+     * @Then the response contains the following json/JSON:
+     */
+    public function theResponseShouldContainJson($jsonData)
+    {
+        $json     = $this->getJsonData($jsonData);
+        $response = $this->getJsonData($this->getResponseContent());
+
+        Assert::assertEquals($json, $response);
+    }
+
+    /**
+     * @Then the response should contain the following jsonp/JSONP:
+     * @Then the response contains the following jsonp/JSONP:
+     */
+    public function theResponseShouldContainJsonp(PyStringNode $jsonData)
+    {
+        $json  = preg_replace('~\s~', '', $jsonData->getRaw());
+        $jsonp = preg_replace(['~/\*\*/~', '~\s~'], '', $this->getResponseContent());
+
+        Assert::assertEquals($json, $jsonp);
     }
 
     /**
@@ -287,6 +311,15 @@ class ApiContext extends BaseFeatureContext
     }
 
     /**
+     * @Then the api error should contain ":text"
+     */
+    public function theApiErrorShouldContain($text)
+    {
+        $error = $this->getApiError();
+        Assert::assertEquals($text, $error);
+    }
+
+    /**
      * @Then the api/API result should contain a key with:
      */
     public function theResultShouldContainNode($node)
@@ -296,7 +329,7 @@ class ApiContext extends BaseFeatureContext
         $result = $this->getApiResult();
         foreach ($result as $value) {
             if ($value == $json) {
-                return true;
+                return;
             }
         }
 
@@ -304,7 +337,7 @@ class ApiContext extends BaseFeatureContext
     }
 
     /**
-     * @param $data
+     * @param string|PyStringNode|TableNode $data
      *
      * @throws \InvalidArgumentException
      *
@@ -312,10 +345,6 @@ class ApiContext extends BaseFeatureContext
      */
     protected function getJsonData($data)
     {
-        if (!is_object($data)) {
-            throw new \InvalidArgumentException('Invalid json data');
-        }
-
         $json = null;
 
         if ($data instanceof PyStringNode) {
@@ -324,6 +353,10 @@ class ApiContext extends BaseFeatureContext
 
         if ($data instanceof TableNode) {
             $json = $data->getRowsHash();
+        }
+
+        if (is_string($data)) {
+            $json = json_decode($data, true);
         }
 
         if (null === $json) {
@@ -373,6 +406,24 @@ class ApiContext extends BaseFeatureContext
      */
     protected function getApiResult()
     {
-        return $this->getApiResponse()['result'];
+        $response = $this->getApiResponse();
+
+        Assert::assertArrayHasKey('result', $response);
+
+        return $response['result'];
+    }
+
+    /**
+     * Returns the "error" key of the last api response.
+     *
+     * @return mixed
+     */
+    protected function getApiError()
+    {
+        $response = $this->getApiResponse();
+
+        Assert::assertArrayHasKey('error', $response);
+
+        return $response['error'];
     }
 }
