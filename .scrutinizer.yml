@@ -60,5 +60,5 @@ tools:
   php_pdepend: true
   php_sim: true
   php_changetracking: true
-  external_code_coverage: ~
-
+  external_code_coverage:
+    runs: 2
