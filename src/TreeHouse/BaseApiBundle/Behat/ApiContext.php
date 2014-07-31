@@ -311,6 +311,15 @@ class ApiContext extends BaseFeatureContext
     }
 
     /**
+     * @Then the api error should contain ":text"
+     */
+    public function theApiErrorShouldContain($text)
+    {
+        $error = $this->getApiError();
+        Assert::assertEquals($text, $error);
+    }
+
+    /**
      * @Then the api/API result should contain a key with:
      */
     public function theResultShouldContainNode($node)
@@ -397,6 +406,24 @@ class ApiContext extends BaseFeatureContext
      */
     protected function getApiResult()
     {
-        return $this->getApiResponse()['result'];
+        $response = $this->getApiResponse();
+
+        Assert::assertArrayHasKey('result', $response);
+
+        return $response['result'];
+    }
+
+    /**
+     * Returns the "error" key of the last api response.
+     *
+     * @return mixed
+     */
+    protected function getApiError()
+    {
+        $response = $this->getApiResponse();
+
+        Assert::assertArrayHasKey('error', $response);
+
+        return $response['error'];
     }
 }
