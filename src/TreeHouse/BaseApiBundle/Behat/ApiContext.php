@@ -17,6 +17,16 @@ class ApiContext extends BaseFeatureContext
      * @var string
      */
     protected static $userToken;
+    
+    /**
+     * @BeforeScenario
+     */
+    public function onBefore()
+    {
+        static::$authToken = null;
+        static::$userToken = null;
+        static::$response = null;
+    }
 
     /**
      * @When I get/GET to :path
