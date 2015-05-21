@@ -17,7 +17,7 @@ class ApiContext extends BaseFeatureContext
      * @var string
      */
     protected static $userToken;
-    
+
     /**
      * @BeforeScenario
      */

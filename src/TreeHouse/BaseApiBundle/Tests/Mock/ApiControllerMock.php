@@ -2,6 +2,7 @@
 
 namespace TreeHouse\BaseApiBundle\Tests\Mock;
 
+use JMS\Serializer\SerializationContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use TreeHouse\BaseApiBundle\Controller\BaseApiController;
@@ -28,18 +29,35 @@ class ApiControllerMock extends BaseApiController
         return $this->createResponse($statusCode);
     }
 
-    public function doRenderOk(Request $request, $result, $code = 200, array $groups = [], array $metadata = [])
-    {
-        return $this->renderOk($request, $result, $code, $groups, $metadata);
+    public function doRenderOk(
+        Request $request,
+        $result,
+        $code = 200,
+        array $groups = [],
+        array $metadata = [],
+        SerializationContext $context = null
+    ) {
+        return $this->renderOk($request, $result, $code, $groups, $metadata, $context);
     }
 
-    public function doRenderError(Request $request, $code = 400, $error, array $groups = [])
-    {
-        return $this->renderError($request, $code, $error, $groups);
+    public function doRenderError(
+        Request $request,
+        $code = 400,
+        $error,
+        array $groups = [],
+        SerializationContext $context = null
+    ) {
+        return $this->renderError($request, $code, $error, $groups, $context);
     }
 
-    public function doRenderResponse(Request $request, array $result = [], $ok, $statusCode, array $groups = [])
-    {
-        return $this->renderResponse($request, $result, $ok, $statusCode, $groups);
+    public function doRenderResponse(
+        Request $request,
+        array $result = [],
+        $ok,
+        $statusCode,
+        array $groups = [],
+        SerializationContext $context = null
+    ) {
+        return $this->renderResponse($request, $result, $ok, $statusCode, $groups, $context);
     }
 }

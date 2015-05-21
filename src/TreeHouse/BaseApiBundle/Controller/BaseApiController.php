@@ -17,7 +17,7 @@ use TreeHouse\BaseApiBundle\Exception\ValidationException;
 abstract class BaseApiController extends Controller
 {
     /**
-     * @param integer $statusCode
+     * @param int $statusCode
      *
      * @return JsonResponse
      */
@@ -35,15 +35,16 @@ abstract class BaseApiController extends Controller
      *
      * @see renderResponse()
      *
-     * @param Request $request
-     * @param mixed   $result   The result of the call.
-     * @param integer $code     The response code.
-     * @param array   $groups   JMS\Serializer groups
-     * @param array   $metadata Extra metadata to put in the response
+     * @param Request              $request
+     * @param mixed                $result   The result of the call.
+     * @param int                  $code     The response code.
+     * @param array                $groups   JMS\Serializer groups
+     * @param array                $metadata Extra metadata to put in the response
+     * @param SerializationContext $context  The context to use for serializing the result data
      *
      * @return JsonResponse
      */
-    protected function renderOk(Request $request, $result, $code = 200, array $groups = [], array $metadata = [])
+    protected function renderOk(Request $request, $result, $code = 200, array $groups = [], array $metadata = [], SerializationContext $context = null)
     {
         $data = array();
 
@@ -55,7 +56,7 @@ abstract class BaseApiController extends Controller
             $data['result'] = $result;
         }
 
-        return $this->renderResponse($request, $data, true, $code, $groups);
+        return $this->renderResponse($request, $data, true, $code, $groups, $context);
     }
 
     /**
@@ -63,16 +64,22 @@ abstract class BaseApiController extends Controller
      *
      * @see renderResponse()
      *
-     * @param Request      $request
-     * @param integer      $code    The response code
-     * @param string|array $error   The error
-     * @param array        $groups  JMS\Serializer groups
+     * @param Request              $request
+     * @param int                  $code    The response code
+     * @param string|array         $error   The error
+     * @param array                $groups  JMS\Serializer groups
+     * @param SerializationContext $context The context to use for serializing the result data
      *
      * @return JsonResponse
      */
-    protected function renderError(Request $request, $code = 400, $error, array $groups = [])
-    {
-        return $this->renderResponse($request, ['error' => $error], false, $code, $groups);
+    protected function renderError(
+        Request $request,
+        $code = 400,
+        $error,
+        array $groups = [],
+        SerializationContext $context = null
+    ) {
+        return $this->renderResponse($request, ['error' => $error], false, $code, $groups, $context);
     }
 
     /**
@@ -96,16 +103,23 @@ abstract class BaseApiController extends Controller
      * }
      * </code>
      *
-     * @param Request $request
-     * @param array   $result     The result of the call.
-     * @param boolean $ok         Whether the call was successful or not.
-     * @param integer $statusCode The response code.
-     * @param array   $groups     JMS\Serializer groups
+     * @param Request              $request
+     * @param array                $result     The result of the call.
+     * @param bool                 $ok         Whether the call was successful or not.
+     * @param int                  $statusCode The response code.
+     * @param array                $groups     JMS\Serializer groups
+     * @param SerializationContext $context    The context to use for serializing the result data
      *
      * @return JsonResponse
      */
-    protected function renderResponse(Request $request, array $result = [], $ok, $statusCode, array $groups = [])
-    {
+    protected function renderResponse(
+        Request $request,
+        array $result = [],
+        $ok,
+        $statusCode,
+        array $groups = [],
+        SerializationContext $context = null
+    ) {
         $response = $this->createResponse($statusCode);
 
         $data = array_merge(
@@ -113,12 +127,15 @@ abstract class BaseApiController extends Controller
             $result
         );
 
-        $context = SerializationContext::create();
-        $context->setSerializeNull(true);
+        if ($context === null) {
+            $context = SerializationContext::create();
+        }
 
         if ($groups) {
             $context->setGroups($groups);
         }
+
+        $context->setSerializeNull(true);
 
         // the json response needs to have data set as an array, rather than setting the content directly.
         // this is because other options use that to overwrite the content (like jsonp).
@@ -136,7 +153,7 @@ abstract class BaseApiController extends Controller
                 // remove the callback from the query parameters, and render an error
                 $request->query->remove('callback');
 
-                return $this->renderError($request, Response::HTTP_BAD_REQUEST, $e->getMessage(), $groups);
+                return $this->renderError($request, Response::HTTP_BAD_REQUEST, $e->getMessage(), $groups, $context);
             }
         }
 
