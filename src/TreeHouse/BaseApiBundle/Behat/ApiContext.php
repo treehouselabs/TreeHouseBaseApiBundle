@@ -57,7 +57,7 @@ class ApiContext extends BaseFeatureContext
      */
     public function iPostToWith($path, PyStringNode $string)
     {
-        $this->request('POST', $path, $string);
+        $this->request('POST', $path, trim($string));
     }
 
     /**
@@ -65,7 +65,7 @@ class ApiContext extends BaseFeatureContext
      */
     public function iPutToWith($path, PyStringNode $string)
     {
-        $this->request('PUT', $path, $string);
+        $this->request('PUT', $path, trim($string));
     }
 
     /**
