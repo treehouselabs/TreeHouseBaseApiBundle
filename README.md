@@ -1,11 +1,11 @@
-TreeHouseBaseApiBundle
+Base API bundle
 ======================
 
 Base bundle for Api functionality
 
-[![Build Status](https://travis-ci.org/treehouselabs/TreeHouseBaseApiBundle.svg?branch=master)](https://travis-ci.org/treehouselabs/TreeHouseBaseApiBundle)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/treehouselabs/TreeHouseBaseApiBundle/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/treehouselabs/TreeHouseBaseApiBundle/?branch=master)
-[![Code Coverage](https://scrutinizer-ci.com/g/treehouselabs/TreeHouseBaseApiBundle/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/treehouselabs/TreeHouseBaseApiBundle/?branch=master)
+[![Build Status](https://travis-ci.org/treehouselabs/base-api-bundle.svg?branch=master)](https://travis-ci.org/treehouselabs/base-api-bundle)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/treehouselabs/base-api-bundle/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/treehouselabs/base-api-bundle/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/treehouselabs/base-api-bundle/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/treehouselabs/base-api-bundle/?branch=master)
 
 ## Documentation
 
