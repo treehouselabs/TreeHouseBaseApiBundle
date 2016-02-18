@@ -35,7 +35,7 @@ class TreeHouseBaseApiExtensionTest extends \PHPUnit_Framework_TestCase
         $container = new ContainerBuilder(new ParameterBag(array_merge($parameters, ['kernel.debug' => $debug])));
         $container->registerExtension(new TreeHouseBaseApiExtension());
 
-        $locator = new FileLocator(__DIR__.'/../Fixtures');
+        $locator = new FileLocator(__DIR__ . '/../Fixtures');
         $loader = new YamlFileLoader($container, $locator);
         $loader->load($file);
 

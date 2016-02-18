@@ -1,2 +1,4 @@
-/composer.phar
+/.php_cs.cache
+/build/
+/composer.lock
 /vendor/

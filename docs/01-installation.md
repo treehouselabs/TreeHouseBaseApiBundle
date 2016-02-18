@@ -68,4 +68,4 @@ security:
 
 For more information about seting up Keystone authentication, see that [bundle's documentation][keystone-bundle].
 
-[keystone-bundle]: https://github.com/treehouselabs/TreeHouseKeystoneBundle/blob/master/src/TreeHouse/KeystoneBundle/Resources/doc/01-setup.md
+[keystone-bundle]: https://github.com/treehouselabs/keystone-bundle/blob/master/src/TreeHouse/KeystoneBundle/Resources/doc/01-setup.md
