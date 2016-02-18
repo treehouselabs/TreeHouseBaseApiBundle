@@ -321,12 +321,21 @@ class ApiContext extends BaseFeatureContext
     }
 
     /**
-     * @Then the api error should contain ":text"
+     * @Then the api/API error should contain :text
      */
     public function theApiErrorShouldContain($text)
     {
         $error = $this->getApiError();
-        Assert::assertEquals($text, $error);
+        Assert::assertContains($text, $error);
+    }
+
+    /**
+     * @Then the api/API error should be:
+     */
+    public function theApiErrorShouldEqual(PyStringNode $node)
+    {
+        $error = $this->getApiError();
+        Assert::assertEquals($node->getRaw(), trim($error));
     }
 
     /**
