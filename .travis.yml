@@ -1,29 +1,38 @@
-cache:
-  directories:
-    - $COMPOSER_CACHE_DIR
+sudo: false
 
 language: php
 
+cache:
+  directories:
+    - $HOME/.composer/cache
+
 php:
-  - 5.4
   - 5.5
   - 5.6
+  - 7.0
   - hhvm
 
 matrix:
   fast_finish: true
-  allow_failures:
+  include:
     - php: 5.6
+      env: SYMFONY_VERSION=2.6.*
+    - php: 5.6
+      env: SYMFONY_VERSION=2.7.*
+    - php: 5.6
+      env: SYMFONY_VERSION=2.8.*
+  allow_failures:
     - php: hhvm
 
-install:
+before_install:
   - composer self-update
+  - if [ "$SYMFONY_VERSION" != "" ]; then composer require "symfony/symfony:${SYMFONY_VERSION}" --no-update; fi;
 
-before_script:
-  - composer install --no-interaction
+install:
+  - composer update --prefer-dist --no-interaction
 
 script:
-  - ./vendor/bin/phpunit
+  - ./vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
 
 after_script:
   - wget https://scrutinizer-ci.com/ocular.phar
