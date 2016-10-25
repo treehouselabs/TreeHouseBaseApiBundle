@@ -168,6 +168,8 @@ abstract class BaseFeatureContext implements SnippetAcceptingContext, KernelAwar
             $doctrine->persist($entity);
             $doctrine->flush();
         }
+
+        $doctrine->clear();
     }
 
     /**
