@@ -105,7 +105,6 @@ abstract class BaseFeatureContext implements SnippetAcceptingContext, KernelAwar
 
         $client = $this->createClient($server);
 
-        $server = [];
         foreach ($headers as $headerKey => $headerValue) {
             $server['HTTP_' . $headerKey] = $headerValue;
         }
